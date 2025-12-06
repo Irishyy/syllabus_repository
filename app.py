@@ -174,7 +174,7 @@ class SyllabusApp(tk.Tk):
         conn.close()
 
         wb = openpyxl.Workbook()
-        ws = wb.active
+        ws = wb.active or wb.create_sheet()
         ws.append(["Code", "Name", "Instructor", "Semester", "Year"])
         for row in rows:
             ws.append(row)
