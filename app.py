@@ -8,9 +8,20 @@ from database import get_connection as get_conn
 
 class SyllabusApp(tk.Tk):
     def __init__(self): 
-        super().__init__() # super() function is used to call a method from a parent class. Here, it calls the __init__ method of the Tk class, initializing the Tkinter application.
+        super().__init__()
         self.title("Syllabus Repository System")
         self.geometry("1000x600")
+
+        # Search Frame
+        search_frame = tk.Frame(self)
+        search_frame.pack(pady=5)
+        tk.Label(search_frame, text="Search:").pack(side="left", padx=5)
+        self.search_var = tk.StringVar()
+        self.search_entry = tk.Entry(search_frame, textvariable=self.search_var, width=30)
+        self.search_entry.pack(side="left", padx=5)
+        self.search_entry.bind("<Return>", lambda e: self.search())
+        tk.Button(search_frame, text="Search", command=self.search).pack(side="left", padx=2)
+        tk.Button(search_frame, text="Clear", command=self.clear_search).pack(side="left", padx=2)
 
         # Buttons
         btn_frame = tk.Frame(self)
@@ -32,7 +43,7 @@ class SyllabusApp(tk.Tk):
 
         # Bindings
         self.tree.bind("<Double-1>", self.open_pdf)
-        self.tree.bind("<Button-3>", self.delete_syllabus)  # Right-click delete
+        self.tree.bind("<Button-3>", self.on_right_click)
 
         self.load_data()
 
@@ -43,6 +54,30 @@ class SyllabusApp(tk.Tk):
         for row in conn.execute("SELECT id, course_code, course_name, instructor, semester, year FROM syllabi"):
             self.tree.insert("", "end", values=row)
         conn.close()
+
+    def search(self):
+        term = self.search_var.get().strip()
+        if not term:
+            self.load_data()
+            return
+        
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        
+        conn = get_conn()
+        like = f"%{term}%"
+        rows = conn.execute(
+            "SELECT id, course_code, course_name, instructor, semester, year FROM syllabi "
+            "WHERE course_code LIKE ? OR course_name LIKE ? OR instructor LIKE ? OR semester LIKE ? OR year LIKE ?",
+            (like, like, like, like, like)
+        ).fetchall()
+        for row in rows:
+            self.tree.insert("", "end", values=row)
+        conn.close()
+
+    def clear_search(self):
+        self.search_var.set("")
+        self.load_data()
 
     def add_syllabus(self):
         self.open_form(mode="add")
@@ -67,14 +102,14 @@ class SyllabusApp(tk.Tk):
             e = tk.Entry(win, width=40)
             e.pack()
             if mode == "edit" and data:
-                e.insert(0, data[i+1])  # skip ID
+                e.insert(0, data[i+1])
             entries[label] = e
 
         def save():
             code = entries["Course Code"].get()
             name = entries["Course Name"].get()
             if not code or not name:
-                messagebox.showwarning("Error", "Code and Title required")
+                messagebox.showwarning("Error", "Code and Name required")
                 return
 
             pdf = filedialog.askopenfilename(filetypes=[("PDF", "*.pdf")])
@@ -91,15 +126,21 @@ class SyllabusApp(tk.Tk):
                              (code, name, entries["Instructor"].get(), entries["Semester"].get(),
                               entries["Year"].get(), new_path))
             else:
-                conn.execute("UPDATE syllabi SET course_code=?, title=?, instructor=?, semester=?, year=?, pdf_path=? WHERE id=?",
+                conn.execute("UPDATE syllabi SET course_code=?, course_name=?, instructor=?, semester=?, year=?, pdf_path=? WHERE id=?",
                              (code, name, entries["Instructor"].get(), entries["Semester"].get(),
-                              entries["Year"].get(), new_path, data[0] if data else None))
+                              entries["Year"].get(), new_path, data[0]))
             conn.commit()
             conn.close()
             self.load_data()
             win.destroy()
 
         tk.Button(win, text="Save", command=save, bg="green", fg="white").pack(pady=20)
+
+    def on_right_click(self, event):
+        item = self.tree.identify("item", event.x, event.y)
+        if item:
+            self.tree.selection_set(item)
+            self.delete_syllabus()
 
     def delete_syllabus(self, event=None):
         selected = self.tree.selection()
@@ -129,12 +170,12 @@ class SyllabusApp(tk.Tk):
 
     def export_excel(self):
         conn = get_conn()
-        rows = conn.execute("SELECT course_code,title,instructor,semester,year FROM syllabi").fetchall()
+        rows = conn.execute("SELECT course_code,course_name,instructor,semester,year FROM syllabi").fetchall()
         conn.close()
 
         wb = openpyxl.Workbook()
-        ws = wb.active if wb.active else wb.create_sheet()
-        ws.append(["Code", "Title", "Instructor", "Semester", "Year"])
+        ws = wb.active
+        ws.append(["Code", "Name", "Instructor", "Semester", "Year"])
         for row in rows:
             ws.append(row)
         wb.save("syllabi_export.xlsx")
@@ -142,4 +183,5 @@ class SyllabusApp(tk.Tk):
 
 
 if __name__ == "__main__":
-    SyllabusApp().mainloop()
+    app = SyllabusApp()
+    app.mainloop()
