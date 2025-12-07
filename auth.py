@@ -7,7 +7,7 @@ STORED_HASH = "81dc9bdb52d04dc20036dbd8313ed055"
 def hash_password(password):
   """Hashes a password using MD5 algorithm."""
   return hashlib.md5(password.encode()).hexdigest()
-# The encode() method converts the password string into bytes, which is required by the md5() function. The hexdigest() method returns the hash in a hexadecimal format. If we don't encode the password, the md5() function would raise a TypeError because it expects a bytes-like object. If we don't use hexdigest(), we would get a hash object instead of a string representation of the hash. This string representation is what we typically store in databases for password verification.
+# The encode() method converts the password string into bytes, which is required by the md5() function. The hexdigest() method returns the hash in a hexadecimal format. If we don't encode the password, the md5() function would raise a TypeError because it expects a bytes-like object. 
 
 def verify_login(username: str, password: str) -> bool:
   """Verifies if the provided username and password match a user in the database."""
