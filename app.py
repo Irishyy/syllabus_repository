@@ -139,7 +139,11 @@ class SyllabusApp(tk.Tk):
                 conn.execute("INSERT INTO syllabus_versions (syllabus_id, version_number, pdf_path, change_notes) VALUES (?,?,?,?)",
                             (syllabus_id, 1, new_path, "Initial version"))
             else:
+                if data is None:
+                    messagebox.showerror("Error", "No data provided for edit mode")
+                    return
                 syllabus_id = data[0]
+                
                 notes = change_notes.get("1.0", "end-1c") if change_notes else ""
                 if not notes:
                     messagebox.showwarning("Error", "Please provide change notes for version update")
