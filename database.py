@@ -16,6 +16,7 @@ def init_database():
       course_code TEXT NOT NULL,
       course_name TEXT NOT NULL,
       instructor TEXT NOT NULL,
+      education_program TEXT NOT NULL,
       semester TEXT NOT NULL,
       year INTEGER NOT NULL,
       current_version INTEGER DEFAULT 1,

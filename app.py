@@ -36,11 +36,11 @@ class SyllabusApp(tk.Tk):
         tk.Button(btn_frame, text="Refresh", command=self.load_data).pack(side="left", padx=5)
 
         # Table
-        columns = ("ID", "Code", "Name", "Instructor", "Semester", "Year", "Version")
+        columns = ("ID", "Code", "Name", "Instructor", "Program", "Semester", "Year", "Version")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         for col in columns:
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=100)
+            self.tree.column(col, width=90)
         self.tree.pack(fill="both", expand=True, padx=20, pady=10)
 
         # Bindings
@@ -53,7 +53,7 @@ class SyllabusApp(tk.Tk):
         for i in self.tree.get_children():
             self.tree.delete(i)
         conn = get_conn()
-        for row in conn.execute("SELECT id, course_code, course_name, instructor, semester, year, current_version FROM syllabi"):
+        for row in conn.execute("SELECT id, course_code, course_name, instructor, education_program, semester, year, current_version FROM syllabi"):
             self.tree.insert("", "end", values=row)
         conn.close()
 
@@ -69,9 +69,9 @@ class SyllabusApp(tk.Tk):
         conn = get_conn()
         like = f"%{term}%"
         rows = conn.execute(
-            "SELECT id, course_code, course_name, instructor, semester, year, current_version FROM syllabi "
-            "WHERE course_code LIKE ? OR course_name LIKE ? OR instructor LIKE ? OR semester LIKE ? OR year LIKE ?",
-            (like, like, like, like, like)
+            "SELECT id, course_code, course_name, instructor, education_program, semester, year, current_version FROM syllabi "
+            "WHERE course_code LIKE ? OR course_name LIKE ? OR instructor LIKE ? OR education_program LIKE ? OR semester LIKE ? OR year LIKE ?",
+            (like, like, like, like, like, like)
         ).fetchall()
         for row in rows:
             self.tree.insert("", "end", values=row)
@@ -95,10 +95,10 @@ class SyllabusApp(tk.Tk):
     def open_form(self, mode="add", data=None):
         win = tk.Toplevel(self)
         win.title("Add Syllabus" if mode == "add" else "Edit Syllabus")
-        win.geometry("400x600")
+        win.geometry("400x650")
 
         entries = {}
-        labels = ["Course Code", "Course Name", "Instructor", "Semester", "Year"]
+        labels = ["Course Code", "Course Name", "Instructor", "Education Program", "Semester", "Year"]
         for i, label in enumerate(labels):
             tk.Label(win, text=label + ":").pack(pady=5)
             e = tk.Entry(win, width=40)
@@ -118,8 +118,9 @@ class SyllabusApp(tk.Tk):
         def save():
             code = entries["Course Code"].get()
             name = entries["Course Name"].get()
-            if not code or not name:
-                messagebox.showwarning("Error", "Code and Name required")
+            program = entries["Education Program"].get()
+            if not code or not name or not program:
+                messagebox.showwarning("Error", "Code, Name, and Education Program are required")
                 return
 
             pdf = filedialog.askopenfilename(filetypes=[("PDF", "*.pdf")])
@@ -130,8 +131,8 @@ class SyllabusApp(tk.Tk):
             conn = get_conn()
 
             if mode == "add":
-                cursor = conn.execute("INSERT INTO syllabi (course_code,course_name,instructor,semester,year,current_version) VALUES (?,?,?,?,?,?)",
-                                     (code, name, entries["Instructor"].get(), entries["Semester"].get(),
+                cursor = conn.execute("INSERT INTO syllabi (course_code, course_name, instructor, education_program, semester, year, current_version) VALUES (?,?,?,?,?,?,?)",
+                                     (code, name, entries["Instructor"].get(), program, entries["Semester"].get(),
                                       entries["Year"].get(), 1))
                 syllabus_id = cursor.lastrowid
                 new_path = f"data/pdfs/{syllabus_id}_{code}_v1.pdf"
@@ -153,8 +154,8 @@ class SyllabusApp(tk.Tk):
                 new_version = current_version + 1
                 new_path = f"data/pdfs/{syllabus_id}_{code}_v{new_version}.pdf"
                 shutil.copy(pdf, new_path)
-                conn.execute("UPDATE syllabi SET course_code=?, course_name=?, instructor=?, semester=?, year=?, current_version=? WHERE id=?",
-                            (code, name, entries["Instructor"].get(), entries["Semester"].get(),
+                conn.execute("UPDATE syllabi SET course_code=?, course_name=?, instructor=?, education_program=?, semester=?, year=?, current_version=? WHERE id=?",
+                            (code, name, entries["Instructor"].get(), program, entries["Semester"].get(),
                              entries["Year"].get(), new_version, syllabus_id))
                 conn.execute("INSERT INTO syllabus_versions (syllabus_id, version_number, pdf_path, change_notes) VALUES (?,?,?,?)",
                             (syllabus_id, new_version, new_path, notes))
@@ -249,13 +250,13 @@ class SyllabusApp(tk.Tk):
     def export_excel(self):
         conn = get_conn()
         rows = conn.execute(
-            "SELECT s.course_code, s.course_name, s.instructor, s.semester, s.year, s.current_version FROM syllabi s"
+            "SELECT s.course_code, s.course_name, s.instructor, s.education_program, s.semester, s.year, s.current_version FROM syllabi s"
         ).fetchall()
         conn.close()
 
         wb = openpyxl.Workbook()
         ws = wb.active or wb.create_sheet()
-        ws.append(["Code", "Name", "Instructor", "Semester", "Year", "Current Version"])
+        ws.append(["Code", "Name", "Instructor", "Education Program", "Semester", "Year", "Current Version"])
         for row in rows:
             ws.append(row)
         wb.save("syllabi_export.xlsx")
