@@ -208,10 +208,22 @@ class SyllabusApp(tk.Tk):
                 return
             version_num = v_tree.item(selected_v[0])["values"][0]
             version_path = next((v[3] for v in versions if v[0] == version_num), None)
-            if version_path and os.path.exists(version_path):
+            
+            if not version_path:
+                messagebox.showerror("Error", "Version path not found in database")
+                return
+            
+            # Convert to absolute path with proper separators
+            version_path = os.path.abspath(version_path)
+            
+            if not os.path.exists(version_path):
+                messagebox.showerror("Error", f"PDF file not found at:\n{version_path}")
+                return
+            
+            try:
                 os.startfile(version_path)
-            else:
-                messagebox.showerror("Error", "PDF file not found")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not open PDF: {str(e)}")
 
         tk.Button(v_win, text="Open Selected Version", command=open_selected_version, bg="blue", fg="white").pack(pady=10)
 
@@ -239,16 +251,27 @@ class SyllabusApp(tk.Tk):
             return
         syllabus_id = self.tree.item(selected[0])["values"][0]
         conn = get_conn()
-        path = conn.execute(
+        result = conn.execute(
             "SELECT pdf_path FROM syllabus_versions WHERE syllabus_id=? ORDER BY version_number DESC LIMIT 1",
             (syllabus_id,)
-        ).fetchone()[0]
+        ).fetchone()
         conn.close()
+        
+        if not result:
+            messagebox.showerror("Error", "No PDF version found for this syllabus")
+            return
+        
+        path = result[0]
         path = os.path.abspath(path)
-        if os.path.exists(path):
+        
+        if not os.path.exists(path):
+            messagebox.showerror("Error", f"PDF file not found at:\n{path}")
+            return
+        
+        try:
             os.startfile(path)
-        else:
-            messagebox.showerror("Error", f"PDF file not found: {path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open PDF: {str(e)}")
 
     def export_excel(self):
         conn = get_conn()
