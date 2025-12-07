@@ -52,7 +52,6 @@ def init_database():
 
   conn.commit()
   conn.close()
-  print("Database initialized with versioning support.")
 
 if __name__ == "__main__":
   init_database()

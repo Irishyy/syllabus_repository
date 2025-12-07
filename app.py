@@ -135,7 +135,7 @@ class SyllabusApp(tk.Tk):
                                      (code, name, entries["Instructor"].get(), program, entries["Semester"].get(),
                                       entries["Year"].get(), 1))
                 syllabus_id = cursor.lastrowid
-                new_path = f"data/pdfs/{syllabus_id}_{code}_v1.pdf"
+                new_path = os.path.join("data", "pdfs", f"{syllabus_id}_{code}_v1.pdf")
                 shutil.copy(pdf, new_path)
                 conn.execute("INSERT INTO syllabus_versions (syllabus_id, version_number, pdf_path, change_notes) VALUES (?,?,?,?)",
                             (syllabus_id, 1, new_path, "Initial version"))
@@ -152,7 +152,7 @@ class SyllabusApp(tk.Tk):
 
                 current_version = conn.execute("SELECT current_version FROM syllabi WHERE id=?", (syllabus_id,)).fetchone()[0]
                 new_version = current_version + 1
-                new_path = f"data/pdfs/{syllabus_id}_{code}_v{new_version}.pdf"
+                new_path = os.path.join("data", "pdfs", f"{syllabus_id}_{code}_v{new_version}.pdf")
                 shutil.copy(pdf, new_path)
                 conn.execute("UPDATE syllabi SET course_code=?, course_name=?, instructor=?, education_program=?, semester=?, year=?, current_version=? WHERE id=?",
                             (code, name, entries["Instructor"].get(), program, entries["Semester"].get(),
@@ -244,8 +244,11 @@ class SyllabusApp(tk.Tk):
             (syllabus_id,)
         ).fetchone()[0]
         conn.close()
+        path = os.path.abspath(path)
         if os.path.exists(path):
             os.startfile(path)
+        else:
+            messagebox.showerror("Error", f"PDF file not found: {path}")
 
     def export_excel(self):
         conn = get_conn()
